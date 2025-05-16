@@ -7,15 +7,16 @@ import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 export default function ConsultationsPage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [patientIdFilter, setPatientIdFilter] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [title, setTitle] = useState("");
   const [patientId, setPatientId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const [title, setTitle] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{
     patientId?: string;
     title?: string;
@@ -98,22 +99,18 @@ export default function ConsultationsPage() {
         .getTracks()
         .forEach((track) => track.stop());
       setIsRecording(false);
+      // Smooth form experience
+      setIsSaving(true);
     }
   };
 
-  const saveRecording = async (audioBlob: Blob) => {
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("patientId", patientId);
-    formData.append("audioBlob", audioBlob);
-
+  const saveRecording = async (blob: Blob) => {
     try {
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("patientId", patientId);
+      formData.append("audioBlob", blob);
+
       const response = await fetch("/api/consultations", {
         method: "POST",
         body: formData,
@@ -127,8 +124,12 @@ export default function ConsultationsPage() {
       setPatientId("");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to save recording"
+        err instanceof Error
+          ? err.message
+          : "Failed to save recording."
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -246,9 +247,15 @@ export default function ConsultationsPage() {
                 type="text"
                 value={patientId}
                 onChange={handlePatientIdChange}
-                className={`w-full px-3 py-2 border ${
+                disabled={isRecording || isSaving}
+                className={`w-full px-3 py-2 border
+                ${
                   validationErrors.patientId ? "border-red-500" : "border-gray-300"
-                } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                }
+                ${
+                  isRecording || isSaving ? "bg-gray-300 cursor-not-allowed" : ""
+                }
+                rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter patient ID"
               />
               {validationErrors.patientId && (
@@ -267,9 +274,14 @@ export default function ConsultationsPage() {
                 type="text"
                 value={title}
                 onChange={handleTitleChange}
-                className={`w-full px-3 py-2 border ${
+                className={`w-full px-3 py-2 border 
+                ${
                   validationErrors.title ? "border-red-500" : "border-gray-300"
-                } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                }
+                ${
+                  isRecording || isSaving ? "bg-gray-300 cursor-not-allowed" : ""
+                }
+                rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter consultation title"
               />
               {validationErrors.title && (
@@ -282,10 +294,13 @@ export default function ConsultationsPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={isRecording ? stopRecording : startRecording}
+                disabled={isSaving || (isRecording ? false : (!patientId || !title))}
                 className={`px-4 py-2 rounded-md text-white font-medium ${
                   isRecording
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : (isSaving || !patientId || !title)
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
                 {isRecording ? "Stop Recording" : "Start Recording"}
@@ -294,6 +309,11 @@ export default function ConsultationsPage() {
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>
                   <span className="text-sm text-gray-600">Recording...</span>
+                </div>
+              )}
+              {isSaving && (
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-600">Saving...</span>
                 </div>
               )}
             </div>
