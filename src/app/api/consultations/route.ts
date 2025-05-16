@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { consultations } from "@/lib/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -8,12 +8,13 @@ export async function GET(request: Request) {
   const patientId = searchParams.get("patientId");
 
   try {
+    const baseQuery = db.select().from(consultations);
+
     const result = patientId
-      ? await db
-          .select()
-          .from(consultations)
-          .where(eq(consultations.patientId, patientId))
-      : await db.select().from(consultations);
+    ? await baseQuery
+        .where(eq(consultations.patientId, patientId))
+        .orderBy(desc(consultations.recordedAt))
+    : await baseQuery.orderBy(desc(consultations.recordedAt));
 
     return NextResponse.json(result);
   } catch (error) {
