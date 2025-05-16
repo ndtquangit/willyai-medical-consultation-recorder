@@ -4,10 +4,7 @@ import * as schema from "./schema";
 import { env } from "@/env";
 
 const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Temporary: Required for Supabase connections
-  }
+  connectionString: env.DATABASE_URL
 });
 
 export const db = drizzle(pool, { schema });
