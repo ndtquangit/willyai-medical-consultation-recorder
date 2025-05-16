@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50;
+}
+
+audio {
+  @apply w-full;
+}
+
+audio::-webkit-media-controls-panel {
+  @apply bg-gray-100;
+}
+
+audio::-webkit-media-controls-play-button,
+audio::-webkit-media-controls-mute-button {
+  @apply bg-blue-500 rounded-full;
+}
